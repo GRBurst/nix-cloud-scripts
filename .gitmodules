@@ -1,0 +1,3 @@
+[submodule "script-cook"]
+	path = script-cook
+	url = git@github.com:GRBurst/script-cook
