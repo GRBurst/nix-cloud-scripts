@@ -1,6 +1,5 @@
 #! /usr/bin/env nix-shell
 #! nix-shell -i bash
-#! nix-shell --keep AWS_PROFILE
 #! nix-shell -p awscli2 aws-vault
 #! nix-shell -p awslogs fzf
 
@@ -10,7 +9,7 @@ set -Eeuo pipefail
 # cd to script location
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
-source ./script-cook/lib.sh
+source ../script-cook/lib.sh
 
 
 # Configure your parameters here. The provided 
@@ -46,12 +45,9 @@ run() (
     # Use all the parameter with the defined array get_logs_params
     local -a p_params
     get_args p_params "p"
-    echo "all ${get_logs_params[@]}"
-    echo "p ${p_params[@]}"
 
     local group=$(awslogs groups "${p_params[@]}" | fzf)
     if [[ -n "$group" ]]; then
-        echo "awslogs get --watch $group --no-group --no-stream ${get_logs_params[@]}"
         awslogs get --watch $group --no-group --no-stream "${get_logs_params[@]}"
     fi
 )
