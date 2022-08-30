@@ -27,8 +27,18 @@ If you don’t have `nix-shell` on your system, you have to take care of the nee
 bash ./script-cook/template.sh
 ```
 
-## Adding a script
+## Contribute
 
-Please use the templates `template.sh` and `template-aws.sh`.
-It contains a description as well.
+To get started, you can just copy one of the templates like `template.sh` or `template-aws.sh` and change the following:
+
+1. Options / parameters your script.
+2. Usage / help message with examples.
+3. Body of the `run()` function.
+
+It is wise to keep the nix-shell pure, e.g. add / keep the `nix-shell --pure` parameter in the shebang.
+This guarantees that you don't forget to add the necessary dependencies to run the script.
+The templates contain some descriptions as well.
+
+However, if your script requires a tool that needs to interact with the environment like `aws-vault`, which allows for requesting a token via sso of your system's default browser, you want to remove it before releasing it to the public.
+
 You can open a pull request at any time and I am happy to help in a draft PR 😉
