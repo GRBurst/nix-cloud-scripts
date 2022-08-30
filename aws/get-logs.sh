@@ -42,13 +42,9 @@ USAGE
 
 # Put your script logic here
 run() (
-    # Use all the parameter with the defined array params
-    local -a p_params
-    get_args p_params "p"
-
-    local group=$(awslogs groups "${p_params[@]}" | fzf)
+    local group="$(awslogs groups $(get_args_str p) | fzf)"
     if [[ -n "$group" ]]; then
-        awslogs get --watch $group --no-group --no-stream "${params[@]}"
+        awslogs get --watch "$group" --no-group --no-stream "${params[@]}"
     fi
 )
 
