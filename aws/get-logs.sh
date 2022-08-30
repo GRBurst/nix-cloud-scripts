@@ -42,7 +42,8 @@ USAGE
 
 # Put your script logic here
 run() (
-    local group="$(awslogs groups $(get_args_str p) | fzf)"
+    local profile="$(get_args_str p)"
+    local group="$(awslogs groups $profile | fzf)"
     if [[ -n "$group" ]]; then
         awslogs get --watch "$group" --no-group --no-stream "${params[@]}"
     fi
