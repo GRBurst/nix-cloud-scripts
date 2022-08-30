@@ -13,12 +13,12 @@ source ../script-cook/lib.sh
 
 
 # Configure your parameters here. The provided 
-declare -A get_logs_options=(
+declare -A options=(
     [p,arg]="--profile" [p,value]="${AWS_PROFILE:-}" [p,short]="-p" [p,required]=true  [p,name]="aws profile"
     [s,arg]="--start"                                [s,short]="-s" [s,required]=false [s,name]="start position"
 )
 # This will contain the resulting parameters of your command
-declare -a get_logs_params
+declare -a params
 
 # Define your usage and help message here
 usage() (
@@ -35,20 +35,20 @@ Usage and Examples
     $script_name
 
 
-$(_generate_usage get_logs_options)
+$(_generate_usage options)
 
 USAGE
 )
 
 # Put your script logic here
 run() (
-    # Use all the parameter with the defined array get_logs_params
+    # Use all the parameter with the defined array params
     local -a p_params
     get_args p_params "p"
 
     local group=$(awslogs groups "${p_params[@]}" | fzf)
     if [[ -n "$group" ]]; then
-        awslogs get --watch $group --no-group --no-stream "${get_logs_params[@]}"
+        awslogs get --watch $group --no-group --no-stream "${params[@]}"
     fi
 )
 
@@ -58,9 +58,9 @@ self() (
     declare -a args=( "$@" )
     if [[ "${1:-}" == "help" ]] || [[ "${1:-}" == "--help" ]]; then
         usage
-    elif (check_requirements get_logs_options args); then
+    elif (check_requirements options args); then
 
-        process_args get_logs_options args get_logs_params || _print_debug "Couldn't process args, terminated with $?"
+        process_args options args params || _print_debug "Couldn't process args, terminated with $?"
 
         run
     else

@@ -15,11 +15,11 @@ source ../script-cook/lib.sh
 
 
 # Configure your parameters here. The provided 
-declare -A get_credential_options=(
+declare -A options=(
     [p,arg]="--profile" [p,value]="${AWS_PROFILE:-}" [p,short]="-p" [p,required]=true  [p,name]="aws profile"
 )
 # This will contain the resulting parameters of your command
-declare -a get_credential_params
+declare -a params
 
 
 # Define your usage and help message here
@@ -39,7 +39,7 @@ Usage and Examples
     $script_name
 
 
-$(_generate_usage get_credential_options)
+$(_generate_usage options)
 
 USAGE
 )
@@ -47,8 +47,8 @@ USAGE
 # Put your script logic here
 run() (
 
-    secret_name="$(aws secretsmanager list-secrets "${get_credential_params[@]}" | jq -r '.SecretList | .[].Name' | fzf)"
-    aws secretsmanager "${get_credential_params[@]}" get-secret-value --version-stage AWSCURRENT --secret-id "$secret_name" | jq -r '.SecretString | fromjson | .password' | xclip
+    secret_name="$(aws secretsmanager list-secrets "${params[@]}" | jq -r '.SecretList | .[].Name' | fzf)"
+    aws secretsmanager "${params[@]}" get-secret-value --version-stage AWSCURRENT --secret-id "$secret_name" | jq -r '.SecretString | fromjson | .password' | xclip
 )
 
 # This is the base frame and it shouldn't be necessary to touch it
@@ -56,9 +56,9 @@ self() (
     declare -a args=( "$@" )
     if [[ "${1:-}" == "help" ]] || [[ "${1:-}" == "--help" ]]; then
         usage
-    elif (check_requirements get_credential_options args); then
+    elif (check_requirements options args); then
 
-        process_args get_credential_options args get_credential_params || _print_debug "Couldn't process args, terminated with $?"
+        process_args options args params || _print_debug "Couldn't process args, terminated with $?"
 
         run
     else
