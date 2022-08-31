@@ -2,8 +2,8 @@
 #! nix-shell -i bash
 #! nix-shell -p awscli2 aws-vault
 #! nix-shell -p jq fzf
-##! nix-shell --pure
-##! nix-shell --keep AWS_PROFILE
+#! nix-shell --pure
+#! nix-shell --keep AWS_PROFILE
 
 # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail
 set -Eeuo pipefail
@@ -33,6 +33,7 @@ usage() (
     cat <<-USAGE
 Return up to 60 emails that have registered in last x days.
 The first parameters determines the number of days to look back and defaults to 1 week (7 days).
+Uses unix date (which has to be installed explicitly if you are a mac user).
 
 
 Usage and Examples
