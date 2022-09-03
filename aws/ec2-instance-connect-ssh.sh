@@ -25,7 +25,7 @@ declare -a params
 declare -A options=(
     [p,arg]="--profile"        [p,short]="-p" [p,required]=true  [p,value]="${AWS_PROFILE:-}" [p,name]="aws profile"
     [i,arg]="--identity-file"  [i,short]="-i" [i,required]=false                              [i,name]="instance connect private key"
-    [n,arg]="--instance"       [n,short]="-n" [n,required]=false                              [n,name]="instance id or instnace name"
+    [n,arg]="--instance"       [n,short]="-n" [n,required]=false                              [n,name]="instance id or instance name"
     [k,arg]="--ssh-public-key" [k,short]="-k" [k,required]=false                              [k,name]="instance connect public key"
     [s,arg]="--ssh-args"       [s,short]="-s" [s,required]=false                              [s,name]="ssh arguments"
     [g,arg]="--gen-key"        [g,short]="-g" [g,required]=false [g,tpe]="bool"               [g,name]="generate one-time key"
@@ -53,10 +53,10 @@ Usage and Examples
 - Interactively choose an ec2 instance to connect, provide an aws profile and a ssh key and forward port 8000 to localhost 58000:
     $script_name --profile <aws_profile> --identity-file ~/.ssh/<identity_file> --ssh-args "-L 58000:localhost:8000"
 
-- Connect directly to an ec2 instance and provide an aws profile, a ssh key and the instnace name:
+- Connect directly to an ec2 instance and provide an aws profile, a ssh key and the instance name:
     $script_name --profile <aws_profile> --identity-file ~/.ssh/<identity_file> -n <instance_name>
 
-- Connect directly to an ec2 instance and provide an aws profile, a ssh key and the instnace id:
+- Connect directly to an ec2 instance and provide an aws profile, a ssh key and the instance id:
     $script_name --profile <aws_profile> --identity-file ~/.ssh/<identity_file> -n <instnace_id>
 
 
