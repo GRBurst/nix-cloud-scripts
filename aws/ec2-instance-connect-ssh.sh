@@ -2,7 +2,7 @@
 #! nix-shell -i bash
 #! nix-shell -p awscli2 aws-vault
 #! nix-shell -p ssm-session-manager-plugin openssh
-#! nix-shell -p fzf jq
+#! nix-shell -p fzf jq mktemp
 ##! nix-shell --pure
 ##! nix-shell --keep AWS_PROFILE --keep DEBUG
 # add '#' for the 2 shebangs above after finishing development of the script.
@@ -23,11 +23,12 @@ declare -a params
 
 # Configure your parameters here
 declare -A options=(
-    [p,arg]="--profile"  [p,value]="${AWS_PROFILE:-}" [p,short]="-p" [p,required]=true  [p,name]="aws profile"
-    [i,arg]="--identity-file"                         [i,short]="-i" [i,required]=false [i,name]="instance connect private key"
-    [n,arg]="--instance"                              [n,short]="-n" [n,required]=false [n,name]="instance id or instnace name"
-    [k,arg]="--ssh-public-key"                        [k,short]="-k" [k,required]=false [k,name]="instance connect public key"
-    [s,arg]="--ssh-args"                              [s,short]="-s" [s,required]=false [s,name]="ssh arguments"
+    [p,arg]="--profile"        [p,short]="-p" [p,required]=true  [p,value]="${AWS_PROFILE:-}" [p,name]="aws profile"
+    [i,arg]="--identity-file"  [i,short]="-i" [i,required]=false                              [i,name]="instance connect private key"
+    [n,arg]="--instance"       [n,short]="-n" [n,required]=false                              [n,name]="instance id or instnace name"
+    [k,arg]="--ssh-public-key" [k,short]="-k" [k,required]=false                              [k,name]="instance connect public key"
+    [s,arg]="--ssh-args"       [s,short]="-s" [s,required]=false                              [s,name]="ssh arguments"
+    [g,arg]="--gen-key"        [g,short]="-g" [g,required]=false [g,tpe]="bool"               [g,name]="generate one-time key"
 )
 
 # Define your usage and help message here
@@ -42,6 +43,9 @@ Usage and Examples
 
 - Interactively choose an ssh key and an ec2 instance to connect and provide an aws profile and a ssh key:
     $script_name --profile <aws_profile>
+
+- Interactively choose an ec2 instance to connect and provide an aws profile and generate a one-time key:
+    $script_name --profile <aws_profile> --gen-key
 
 - Interactively choose an ec2 instance to connect and provide an aws profile and a ssh key:
     $script_name --profile <aws_profile> --identity-file ~/.ssh/<identity_file>
@@ -63,22 +67,37 @@ USAGE
 
 # Put your script logic here
 run() (
-    local avail_zone instance_id profile priv_key pub_key ssh_args
+    local avail_zone instance_id profile priv_key pub_key ssh_args tmpdir
 
     profile="$(get_args_str p)"
     ssh_args="$(get_values_str s)"
+    tmpdir="$(mktemp -d)"
 
-    priv_key="$(find ~/.ssh -type f -not -iname "*.pub" | fzf -q "'${options[i,value]:-}" -1)"
-    if [[ -z "${priv_key}" ]] && [[ -n "${options[i,value]}" ]]; then
-        priv_key="${options[i,value]}"
-    fi
+    trap cleanup SIGINT SIGTERM EXIT
+    cleanup() (
+        if [[ -d "$tmpdir" ]]; then
+            echo "cleaning up $tmpdir"
+            rm -r $tmpdir
+        fi
+    )
 
-    if [[ -n "${options[k,value]:-}" ]]; then
-        pub_key="${options[k,value]}"
-    elif [[ -z "${options[k,value]:-}" ]] && [[ -f "${priv_key}.pub" ]]; then
+    if [[ "${options[g,value]:-}" == "true" ]]; then
+        priv_key="$tmpdir/aws_instance_concect"
         pub_key="${priv_key}.pub"
+        ssh-keygen -q -C "$(whoami) tmp instance connect key" -f "$priv_key" -N "" -t ed25519 
     else
-        pub_key="$(find ~/.ssh -type f -iname "*.pub" | fzf)"
+        priv_key="$(find ~/.ssh -type f -not -iname "*.pub" | fzf -q "'${options[i,value]:-}" -1)"
+        if [[ -z "${priv_key}" ]] && [[ -n "${options[i,value]}" ]]; then
+            priv_key="${options[i,value]}"
+        fi
+
+        if [[ -n "${options[k,value]:-}" ]]; then
+            pub_key="${options[k,value]}"
+        elif [[ -z "${options[k,value]:-}" ]] && [[ -f "${priv_key}.pub" ]]; then
+            pub_key="${priv_key}.pub"
+        else
+            pub_key="$(find ~/.ssh -type f -iname "*.pub" | fzf)"
+        fi
     fi
 
     instance_id="$(aws $profile ec2 describe-instances --filter Name=instance-state-name,Values=running | jq -r '.Reservations[].Instances[] | [ .InstanceId, (.Tags[] | select(.Key == "Name") | .Value) ] | @tsv' | fzf -q "'${options[n,value]:-}" -1 | cut -f1)"
