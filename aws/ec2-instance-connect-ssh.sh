@@ -46,6 +46,9 @@ Usage and Examples
 - Interactively choose an ec2 instance to connect and provide an aws profile and a ssh key:
     $script_name --profile <aws_profile> --identity-file ~/.ssh/<identity_file>
 
+- Interactively choose an ec2 instance to connect, provide an aws profile and a ssh key and forward port 8000 to localhost 58000:
+    $script_name --profile <aws_profile> --identity-file ~/.ssh/<identity_file> --ssh-args "-L 58000:localhost:8000"
+
 - Connect directly to an ec2 instance and provide an aws profile, a ssh key and the instnace name:
     $script_name --profile <aws_profile> --identity-file ~/.ssh/<identity_file> -n <instance_name>
 
