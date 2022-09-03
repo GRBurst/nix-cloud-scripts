@@ -63,7 +63,7 @@ run() (
     local avail_zone instance_id profile priv_key pub_key ssh_args
 
     profile="$(get_args_str p)"
-    ssh_args="$(get_args_str s)"
+    ssh_args="$(get_values_str s)"
 
     priv_key="$(find ~/.ssh -type f -not -iname "*.pub" | fzf -q "'${options[i,value]:-}" -1)"
     if [[ -z "${priv_key}" ]] && [[ -n "${options[i,value]}" ]]; then
@@ -88,7 +88,7 @@ sh -c "aws $profile ec2-instance-connect send-ssh-public-key --instance-id %h --
 CMD
         )"
 
-        ssh -l ec2-user -i "${priv_key}" -o ProxyCommand="$prox_cmd" $instance_id "${@}"
+        ssh -l ec2-user -i "${priv_key}" -o ProxyCommand="$prox_cmd" $instance_id $ssh_args
     fi
 )
 
