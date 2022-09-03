@@ -3,8 +3,8 @@
 #! nix-shell -p awscli2 aws-vault
 #! nix-shell -p jq fzf
 ##! nix-shell --pure
-##! nix-shell --keep AWS_PROFILE
-# remove one # for the 2 shebangs above during devlopment of the script.
+##! nix-shell --keep AWS_PROFILE --keep DEBUG
+# add '#' for the 2 shebangs above after finishing development of the script.
 
 # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail
 set -Eeuo pipefail
