@@ -28,7 +28,7 @@ declare -A options=(
     [n,arg]="--instance"       [n,short]="-n" [n,required]=false                              [n,name]="instance id or instance name"
     [k,arg]="--ssh-public-key" [k,short]="-k" [k,required]=false                              [k,name]="instance connect public key"
     [s,arg]="--ssh-args"       [s,short]="-s" [s,required]=false                              [s,name]="ssh arguments"
-    [g,arg]="--gen-key"        [g,short]="-g" [g,required]=false [g,tpe]="bool"               [g,name]="generate one-time key"
+    [g,arg]="--no-key-gen"     [g,short]="-g" [g,required]=false [g,tpe]="bool"               [g,name]="don't generate one-time key"
 )
 
 # Define your usage and help message here
@@ -75,17 +75,25 @@ run() (
 
     trap cleanup SIGINT SIGTERM EXIT
     cleanup() (
+        echo "cleaning up $tmpdir"
+        local tmp_check="$(dirname $(mktemp -u))"
+        local tmpdir_check="$(dirname $tmpdir)"
+        if [[ "$tmp_check" != "$tmpdir_check" ]]; then 
+            echo "Keys in $tmpdir are in an unusual directory. Please remove manually."
+            return 1
+        fi
+        if [[ -f "$tmpdir/$priv_key" ]]; then
+            rm "$tmpdir/$priv_key"
+        fi
+        if [[ -f "$tmpdir/$pub_key" ]]; then
+            rm "$tmpdir/$pub_key"
+        fi
         if [[ -d "$tmpdir" ]]; then
-            echo "cleaning up $tmpdir"
-            rm -r $tmpdir
+            rm -r "$tmpdir"
         fi
     )
 
     if [[ "${options[g,value]:-}" == "true" ]]; then
-        priv_key="$tmpdir/aws_instance_concect"
-        pub_key="${priv_key}.pub"
-        ssh-keygen -q -C "$(whoami) tmp instance connect key" -f "$priv_key" -N "" -t ed25519 
-    else
         priv_key="$(find ~/.ssh -type f -not -iname "*.pub" | fzf -q "'${options[i,value]:-}" -1)"
         if [[ -z "${priv_key}" ]] && [[ -n "${options[i,value]}" ]]; then
             priv_key="${options[i,value]}"
@@ -98,6 +106,11 @@ run() (
         else
             pub_key="$(find ~/.ssh -type f -iname "*.pub" | fzf)"
         fi
+    else
+        echo "Generating one-time ssh key"
+        priv_key="$tmpdir/aws_instance_connect"
+        pub_key="${priv_key}.pub"
+        ssh-keygen -q -C "$(whoami) tmp instance connect key" -f "$priv_key" -N "" -t ed25519 
     fi
 
     instance_id="$(aws $profile ec2 describe-instances --filter Name=instance-state-name,Values=running | jq -r '.Reservations[].Instances[] | [ .InstanceId, (.Tags[] | select(.Key == "Name") | .Value) ] | @tsv' | fzf -q "'${options[n,value]:-}" -1 | cut -f1)"
