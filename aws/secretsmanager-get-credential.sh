@@ -1,6 +1,7 @@
 #! /usr/bin/env nix-shell
 #! nix-shell -i bash
-#! nix-shell -p awscli2 aws-vault
+#! nix-shell -I nixpkgs=https://github.com/GRBurst/nixpkgs/archive/refs/heads/script-cook.tar.gz
+#! nix-shell -p script-cook awscli2 aws-vault
 #! nix-shell -p jq fzf xclip
 ##! nix-shell --pure
 ##! nix-shell --keep AWS_PROFILE
@@ -9,8 +10,7 @@
 # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail
 set -Eeuo pipefail
 
-# source lib.sh
-source "$(dirname "${BASH_SOURCE[0]}")/../script-cook/lib.sh"
+source lib.sh
 
 # This will contain the resulting parameters of your command
 declare -a params
