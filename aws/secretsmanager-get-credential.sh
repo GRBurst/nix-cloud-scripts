@@ -48,8 +48,10 @@ USAGE
 # Put your script logic here
 run() (
 
+    local secret_name
     secret_name="$(aws secretsmanager list-secrets "${params[@]}" | jq -r '.SecretList | .[].Name' | fzf)"
-    aws secretsmanager "${params[@]}" get-secret-value --version-stage AWSCURRENT --secret-id "$secret_name" | jq -r '.SecretString | fromjson | .password' | xclip
+    aws secretsmanager "${params[@]}" get-secret-value --version-stage AWSCURRENT --secret-id "$secret_name" | jq -r '.SecretString | fromjson | .password' | xclip -selection clipboard
+    echo "Copied credential to clipboard"
 )
 
 
