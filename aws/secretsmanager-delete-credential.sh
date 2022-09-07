@@ -1,16 +1,15 @@
 #! /usr/bin/env nix-shell
 #! nix-shell -i bash
-#! nix-shell -I nixpkgs=https://github.com/GRBurst/nixpkgs/archive/refs/heads/script-cook.tar.gz
+#! nix-shell -I nixpkgs=https://github.com/GRBurst/nixpkgs/archive/537d3a7f0bde23e62852a9bdfedf9744dd7f6aff/script-cook.tar.gz
 #! nix-shell -p script-cook awscli2 aws-vault
 #! nix-shell -p jq fzf
 ##! nix-shell --pure
 ##! nix-shell --keep AWS_PROFILE
 # add '#' for the 2 shebangs above after finishing development of the script.
 
-# https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail
 set -Eeuo pipefail
 
-source lib.sh
+source script-cook.sh
 
 # This will contain the resulting parameters of your command
 declare -a params
@@ -22,8 +21,8 @@ declare -a params
 
 # Configure your parameters here
 declare -A options=(
-    [p,arg]="--profile" [p,value]="${AWS_PROFILE:-}" [p,short]="-p" [p,required]=true  [p,name]="aws profile"
-    [a,arg]="--additional-args"                      [a,short]="-a" [a,required]=false [a,name]="additional delete args"
+    [p,arg]="--profile" [p,value]="${AWS_PROFILE:-}" [p,short]="-p" [p,required]=true  [p,desc]="aws profile"
+    [a,arg]="--additional-args"                      [a,short]="-a" [a,required]=false [a,desc]="additional delete args"
 )
 
 # Define your usage and help message here
@@ -45,15 +44,15 @@ Usage and Examples
     $script_name -p <aws_profile> -a "--force-delete-without-recovery"
 
 
-$(_generate_usage options)
+$(cook::usage options)
 USAGE
 )
 
 # Put your script logic here
 run() (
     local secret_name
-    secret_name="$(aws secretsmanager list-secrets $(get_args_str p) | jq -r '.SecretList | .[].Name' | fzf -1)"
-    aws secretsmanager $(get_args_str p) delete-secret --secret-id "$secret_name" $(get_values_str a)
+    secret_name="$(aws secretsmanager list-secrets $(cook::get_str p) | jq -r '.SecretList | .[].Name' | fzf -1)"
+    aws secretsmanager $(cook::get_str p) delete-secret --secret-id "$secret_name" $(cook::get_values_str a)
 )
 
 
@@ -66,15 +65,13 @@ self() (
     declare -a args=( "$@" )
     if [[ "${1:-}" == "help" ]] || [[ "${1:-}" == "--help" ]]; then
         usage
-    elif (check_requirements options args); then
+    elif (cook::check options args); then
 
-        process_args options args params || _print_debug "Couldn't process args, terminated with $?"
+        cook::process options args params
 
         run
-    else
-        _print_debug "Requirements not met"
     fi
 
 )
 
-self $@
+self "$@"

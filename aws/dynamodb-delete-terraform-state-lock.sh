@@ -1,16 +1,15 @@
 #! /usr/bin/env nix-shell
 #! nix-shell -i bash
-#! nix-shell -I nixpkgs=https://github.com/GRBurst/nixpkgs/archive/refs/heads/script-cook.tar.gz
+#! nix-shell -I nixpkgs=https://github.com/GRBurst/nixpkgs/archive/537d3a7f0bde23e62852a9bdfedf9744dd7f6aff/script-cook.tar.gz
 #! nix-shell -p script-cook awscli2 aws-vault
 #! nix-shell -p jq fzf
 ##! nix-shell --keep AWS_PROFILE
 ##! nix-shell --pure
 # add '#' for the 2 shebangs above after finishing development of the script.
 
-# https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail
 set -Eeuo pipefail
 
-source lib.sh
+source script-cook.sh
 
 # This will contain the resulting parameters of your command
 declare -a params
@@ -22,9 +21,9 @@ declare -a params
 
 # Configure your parameters here
 declare -A options=(
-    [p,arg]="--profile"     [p,value]="${AWS_PROFILE:-}" [p,short]="-p" [p,required]=true  [p,name]="aws profile"
-    [t,arg]="--table-name"                               [t,short]="-t" [t,required]=false [t,name]="dynamodb db for terraform state lock"
-    [f,arg]="--name-filter"                              [f,short]="-f" [f,required]=false [f,name]="name filter"
+    [p,arg]="--profile"     [p,value]="${AWS_PROFILE:-}" [p,short]="-p" [p,required]=true  [p,desc]="aws profile"
+    [t,arg]="--table-name"                               [t,short]="-t" [t,required]=false [t,desc]="dynamodb db for terraform state lock"
+    [f,arg]="--name-filter"                              [f,short]="-f" [f,required]=false [f,desc]="name filter"
 )
 
 # Define your usage and help message here
@@ -46,7 +45,7 @@ Usage and Examples
     $script_name -p <aws_profile> -a "--force-delete-without-recovery"
 
 
-$(_generate_usage options)
+$(cook::usage options)
 USAGE
 )
 
@@ -56,7 +55,7 @@ run() (
     local table_name table filten_str aws_profile
     local -a db_entries
 
-    aws_profile="$(get_args_str p)"
+    aws_profile="$(cook::get_str p)"
     table_name="${options[t,value]}"
     filter_str="${options[f,value]}"
     table=$(aws $aws_profile dynamodb list-tables | jq -r ".TableNames | .[]" | grep -i ${table_name:-terraform} | fzf -1)
@@ -112,15 +111,13 @@ self() (
     declare -a args=( "$@" )
     if [[ "${1:-}" == "help" ]] || [[ "${1:-}" == "--help" ]]; then
         usage
-    elif (check_requirements options args); then
+    elif (cook::check options args); then
 
-        process_args options args params || _print_debug "Couldn't process args, terminated with $?"
+        cook::process options args params
 
         run
-    else
-        _print_debug "Requirements not met"
     fi
 
 )
 
-self $@
+self "$@"

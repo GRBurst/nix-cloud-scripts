@@ -1,6 +1,6 @@
 #! /usr/bin/env nix-shell
 #! nix-shell -i bash
-#! nix-shell -I nixpkgs=https://github.com/GRBurst/nixpkgs/archive/refs/heads/script-cook.tar.gz
+#! nix-shell -I nixpkgs=https://github.com/GRBurst/nixpkgs/archive/537d3a7f0bde23e62852a9bdfedf9744dd7f6aff/script-cook.tar.gz
 #! nix-shell -p script-cook awscli2 aws-vault
 #! nix-shell -p ssm-session-manager-plugin openssh
 #! nix-shell -p fzf jq mktemp
@@ -8,10 +8,9 @@
 ##! nix-shell --keep AWS_PROFILE --keep DEBUG
 # add '#' for the 2 shebangs above after finishing development of the script.
 
-# https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail
 set -Eeuo pipefail
 
-source lib.sh
+source script-cook.sh
 
 # This will contain the resulting parameters of your command
 declare -a params
@@ -23,12 +22,12 @@ declare -a params
 
 # Configure your parameters here
 declare -A options=(
-    [p,arg]="--profile"        [p,short]="-p" [p,required]=true  [p,value]="${AWS_PROFILE:-}" [p,name]="aws profile"
-    [i,arg]="--identity-file"  [i,short]="-i" [i,required]=false                              [i,name]="instance connect private key"
-    [n,arg]="--instance"       [n,short]="-n" [n,required]=false                              [n,name]="instance id or instance name"
-    [k,arg]="--ssh-public-key" [k,short]="-k" [k,required]=false                              [k,name]="instance connect public key"
-    [s,arg]="--ssh-args"       [s,short]="-s" [s,required]=false                              [s,name]="ssh arguments"
-    [g,arg]="--no-key-gen"     [g,short]="-g" [g,required]=false [g,tpe]="bool"               [g,name]="don't generate one-time key"
+    [p,arg]="--profile"        [p,short]="-p" [p,required]=true  [p,value]="${AWS_PROFILE:-}" [p,desc]="aws profile"
+    [i,arg]="--identity-file"  [i,short]="-i" [i,required]=false                              [i,desc]="instance connect private key"
+    [n,arg]="--instance"       [n,short]="-n" [n,required]=false                              [n,desc]="instance id or instance name"
+    [k,arg]="--ssh-public-key" [k,short]="-k" [k,required]=false                              [k,desc]="instance connect public key"
+    [s,arg]="--ssh-args"       [s,short]="-s" [s,required]=false                              [s,desc]="ssh arguments"
+    [g,arg]="--no-key-gen"     [g,short]="-g" [g,required]=false [g,tpe]="bool"               [g,desc]="don't generate one-time key"
 )
 
 # Define your usage and help message here
@@ -60,7 +59,7 @@ Usage and Examples
     $script_name --profile <aws_profile> --identity-file ~/.ssh/<identity_file> -n <instnace_id>
 
 
-$(_generate_usage options)
+$(cook::usage options)
 
 USAGE
 )
@@ -69,8 +68,8 @@ USAGE
 run() (
     local avail_zone instance_id profile priv_key pub_key ssh_args tmpdir
 
-    profile="$(get_args_str p)"
-    ssh_args="$(get_values_str s)"
+    profile="$(cook::get_str p)"
+    ssh_args="$(cook::get_values_str s)"
     tmpdir="$(mktemp -d)"
 
     trap cleanup SIGINT SIGTERM EXIT
@@ -137,13 +136,11 @@ self() (
     declare -a args=( "$@" )
     if [[ "${1:-}" == "help" ]] || [[ "${1:-}" == "--help" ]]; then
         usage
-    elif (check_requirements options args); then
+    elif (cook::check options args); then
 
-        process_args options args params || _print_debug "Couldn't process args, terminated with $?"
+        cook::process options args params
 
         run
-    else
-        _print_debug "Requirements not met"
     fi
 
 )
