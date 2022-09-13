@@ -1,6 +1,6 @@
 #! /usr/bin/env nix-shell
 #! nix-shell -i bash
-#! nix-shell -I nixpkgs=https://github.com/GRBurst/nixpkgs/archive/fda2fcd73eac81495810b3748745283b6c1266ef/script-cook.tar.gz
+#! nix-shell -I nixpkgs=https://github.com/GRBurst/nixpkgs/archive/d40c3d5836d74e0f6249b572a1da2f1b05a6b549/script-cook.tar.gz
 #! nix-shell -p script-cook awscli2 aws-vault
 #! nix-shell -p jq fzf
 ##! nix-shell --pure
@@ -8,11 +8,20 @@
 # add '#' for the 2 shebangs above after finishing development of the script.
 
 set -Eeuo pipefail
+declare -r VERSION="1.0.0"
 
-source script-cook.sh
+declare -r script_path="$(dirname "${BASH_SOURCE[0]}")"
+# This is for compatibility to run it without a nix-shell
+if command -v script-cook.sh &> /dev/null; then
+    source script-cook.sh
+else
+    source "$script_path/../script-cook/bin/script-cook.sh"
+fi
 
-# This will contain the resulting parameters of your command
-declare -a params
+declare -A inputs  # Define your inputs below
+declare inputs_str # Alternatively define them in a string matrix
+declare usage      # Define your usage + examples below
+declare -a params  # Holds all input parameter
 
 
 ############################################
@@ -20,16 +29,14 @@ declare -a params
 ############################################
 
 # Configure your parameters here
-declare -A options=(
-    [p,arg]="--profile" [p,value]="${AWS_PROFILE:-}" [p,short]="-p" [p,required]=true  [p,desc]="aws profile"
-    [a,arg]="--additional-args"                      [a,short]="-a" [a,required]=false [a,desc]="additional delete args"
+inputs=(
+    [p,param]="--profile" [p,value]="${AWS_PROFILE:-}" [p,short]="-p" [p,required]=true  [p,desc]="aws profile"
+    [a,param]="--additional-args"                      [a,short]="-a" [a,required]=false [a,desc]="additional delete args"
 )
 
 # Define your usage and help message here
-usage() (
-    local script_name="${0##*/}"
-    cat <<-USAGE
-$script_name consists of 2 parts:
+usage=$(cat <<-USAGE
+$(cook::name) consists of 2 parts:
   1. Let user choose a secret by name.
   2. Deletes the secret in aws.
 
@@ -38,13 +45,10 @@ Usage and Examples
 ---------
 
 - Choose and delete an aws secret:
-    $script_name -p <aws_profile>
+    $(cook::name) -p <aws_profile>
 
 - Choose and delete an aws secret with additional parameters:
-    $script_name -p <aws_profile> -a "--force-delete-without-recovery"
-
-
-$(cook::usage options)
+    $(cook::name) -p <aws_profile> -a "--force-delete-without-recovery"
 USAGE
 )
 
@@ -60,18 +64,13 @@ run() (
 ########### END OF CUSTOMISATION ###########
 ############################################
 
-# This is the base frame and it shouldn't be necessary to touch it
-self() (
-    declare -a args=( "$@" )
-    if [[ "${1:-}" == "help" ]] || [[ "${1:-}" == "--help" ]]; then
-        usage
-    elif (cook::check options args); then
+readonly usage inputs_str
 
-        cook::process options args params
+# We are passing the whole data to cook::run, where
+# 1. run is your function defined above
+# 2. inputs (array) or inputs_str (string) are the possible inputs you defined
+# 3. params is the resulting array containing all inputs provided
+# 4. usage is your usage string and will be enriched + printed on help
+# 5. $@ is the non-checked input for the script
+cook::run run inputs params "${inputs_str:-}" "${usage:-}" "$@"
 
-        run
-    fi
-
-)
-
-self "$@"

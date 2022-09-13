@@ -1,6 +1,6 @@
 #! /usr/bin/env nix-shell
 #! nix-shell -i bash
-#! nix-shell -I nixpkgs=https://github.com/GRBurst/nixpkgs/archive/fda2fcd73eac81495810b3748745283b6c1266ef/script-cook.tar.gz
+#! nix-shell -I nixpkgs=https://github.com/GRBurst/nixpkgs/archive/d40c3d5836d74e0f6249b572a1da2f1b05a6b549/script-cook.tar.gz
 #! nix-shell -p script-cook awscli2 aws-vault
 #! nix-shell -p ssm-session-manager-plugin openssh
 #! nix-shell -p fzf jq mktemp
@@ -9,11 +9,20 @@
 # add '#' for the 2 shebangs above after finishing development of the script.
 
 set -Eeuo pipefail
+declare -r VERSION="1.0.0"
 
-source script-cook.sh
+declare -r script_path="$(dirname "${BASH_SOURCE[0]}")"
+# This is for compatibility to run it without a nix-shell
+if command -v script-cook.sh &> /dev/null; then
+    source script-cook.sh
+else
+    source "$script_path/../script-cook/bin/script-cook.sh"
+fi
 
-# This will contain the resulting parameters of your command
-declare -a params
+declare -A inputs  # Define your inputs below
+declare inputs_str # Alternatively define them in a string matrix
+declare usage      # Define your usage + examples below
+declare -a params  # Holds all input parameter
 
 
 ############################################
@@ -21,19 +30,17 @@ declare -a params
 ############################################
 
 # Configure your parameters here
-declare -A options=(
-    [p,arg]="--profile"        [p,short]="-p" [p,required]=true  [p,value]="${AWS_PROFILE:-}" [p,desc]="aws profile"
-    [i,arg]="--identity-file"  [i,short]="-i" [i,required]=false                              [i,desc]="instance connect private key"
-    [n,arg]="--instance"       [n,short]="-n" [n,required]=false                              [n,desc]="instance id or instance name"
-    [k,arg]="--ssh-public-key" [k,short]="-k" [k,required]=false                              [k,desc]="instance connect public key"
-    [s,arg]="--ssh-args"       [s,short]="-s" [s,required]=false                              [s,desc]="ssh arguments"
-    [g,arg]="--no-key-gen"     [g,short]="-g" [g,required]=false [g,tpe]="bool"               [g,desc]="don't generate one-time key"
+inputs=(
+    [p,param]="--profile"        [p,short]="-p" [p,required]=true  [p,value]="${AWS_PROFILE:-}" [p,desc]="aws profile"
+    [i,param]="--identity-file"  [i,short]="-i" [i,required]=false                              [i,desc]="instance connect private key"
+    [n,param]="--instance"       [n,short]="-n" [n,required]=false                              [n,desc]="instance id or instance name"
+    [k,param]="--ssh-public-key" [k,short]="-k" [k,required]=false                              [k,desc]="instance connect public key"
+    [s,param]="--ssh-args"       [s,short]="-s" [s,required]=false                              [s,desc]="ssh arguments"
+    [g,param]="--no-key-gen"     [g,short]="-g" [g,required]=false [g,tpe]="bool"               [g,desc]="don't generate one-time key"
 )
 
 # Define your usage and help message here
-usage() (
-    local script_name="${0##*/}"
-    cat <<-USAGE
+usage=$(cat <<-USAGE
 Interactively choose and connect to an arbitrary ec2 instance on aws.
 
 
@@ -41,26 +48,22 @@ Usage and Examples
 ---------
 
 - Interactively choose an ssh key and an ec2 instance to connect and provide an aws profile and a ssh key:
-    $script_name --profile <aws_profile>
+    $(cook::name) --profile <aws_profile>
 
 - Interactively choose an ec2 instance to connect and provide an aws profile and generate a one-time key:
-    $script_name --profile <aws_profile> --gen-key
+    $(cook::name) --profile <aws_profile> --gen-key
 
 - Interactively choose an ec2 instance to connect and provide an aws profile and a ssh key:
-    $script_name --profile <aws_profile> --identity-file ~/.ssh/<identity_file>
+    $(cook::name) --profile <aws_profile> --identity-file ~/.ssh/<identity_file>
 
 - Interactively choose an ec2 instance to connect, provide an aws profile and a ssh key and forward port 8000 to localhost 58000:
-    $script_name --profile <aws_profile> --identity-file ~/.ssh/<identity_file> --ssh-args "-L 58000:localhost:8000"
+    $(cook::name) --profile <aws_profile> --identity-file ~/.ssh/<identity_file> --ssh-args "-L 58000:localhost:8000"
 
 - Connect directly to an ec2 instance and provide an aws profile, a ssh key and the instance name:
-    $script_name --profile <aws_profile> --identity-file ~/.ssh/<identity_file> -n <instance_name>
+    $(cook::name) --profile <aws_profile> --identity-file ~/.ssh/<identity_file> -n <instance_name>
 
 - Connect directly to an ec2 instance and provide an aws profile, a ssh key and the instance id:
-    $script_name --profile <aws_profile> --identity-file ~/.ssh/<identity_file> -n <instnace_id>
-
-
-$(cook::usage options)
-
+    $(cook::name) --profile <aws_profile> --identity-file ~/.ssh/<identity_file> -n <instnace_id>
 USAGE
 )
 
@@ -81,6 +84,9 @@ run() (
             echo "Keys in $tmpdir are in an unusual directory. Please remove manually."
             return 1
         fi
+        if [[ -z "${priv_key:-}" ]]; then
+            return
+        fi
         if [[ -f "$tmpdir/$priv_key" ]]; then
             rm "$tmpdir/$priv_key"
         fi
@@ -92,15 +98,15 @@ run() (
         fi
     )
 
-    if [[ "${options[g,value]:-}" == "true" ]]; then
-        priv_key="$(find ~/.ssh -type f -not -iname "*.pub" | fzf -q "'${options[i,value]:-}" -1)"
-        if [[ -z "${priv_key}" ]] && [[ -n "${options[i,value]}" ]]; then
-            priv_key="${options[i,value]}"
+    if [[ "${inputs[g,value]:-}" == "true" ]]; then
+        priv_key="$(find ~/.ssh -type f -not -iname "*.pub" | fzf -q "'${inputs[i,value]:-}" -1)"
+        if [[ -z "${priv_key}" ]] && [[ -n "${inputs[i,value]}" ]]; then
+            priv_key="${inputs[i,value]}"
         fi
 
-        if [[ -n "${options[k,value]:-}" ]]; then
-            pub_key="${options[k,value]}"
-        elif [[ -z "${options[k,value]:-}" ]] && [[ -f "${priv_key}.pub" ]]; then
+        if [[ -n "${inputs[k,value]:-}" ]]; then
+            pub_key="${inputs[k,value]}"
+        elif [[ -z "${inputs[k,value]:-}" ]] && [[ -f "${priv_key}.pub" ]]; then
             pub_key="${priv_key}.pub"
         else
             pub_key="$(find ~/.ssh -type f -iname "*.pub" | fzf)"
@@ -112,7 +118,7 @@ run() (
         ssh-keygen -q -C "$(whoami) tmp instance connect key" -f "$priv_key" -N "" -t ed25519 
     fi
 
-    instance_id="$(aws $profile ec2 describe-instances --filter Name=instance-state-name,Values=running | jq -r '.Reservations[].Instances[] | [ .InstanceId, (.Tags[] | select(.Key == "Name") | .Value) ] | @tsv' | fzf -q "'${options[n,value]:-}" -1 | cut -f1)"
+    instance_id="$(aws $profile ec2 describe-instances --filter Name=instance-state-name,Values=running | jq -r '.Reservations[].Instances[] | [ .InstanceId, (.Tags[] | select(.Key == "Name") | .Value) ] | @tsv' | fzf -q "'${inputs[n,value]:-}" -1 | cut -f1)"
 
     avail_zone="$(aws $profile ec2 describe-instances --instance-ids "$instance_id" --query 'Reservations[0].Instances[0].Placement.AvailabilityZone' --output text)"
 
@@ -131,18 +137,13 @@ CMD
 ########### END OF CUSTOMISATION ###########
 ############################################
 
-# This is the base frame and it shouldn't be necessary to touch it
-self() (
-    declare -a args=( "$@" )
-    if [[ "${1:-}" == "help" ]] || [[ "${1:-}" == "--help" ]]; then
-        usage
-    elif (cook::check options args); then
+readonly usage inputs_str
 
-        cook::process options args params
+# We are passing the whole data to cook::run, where
+# 1. run is your function defined above
+# 2. inputs (array) or inputs_str (string) are the possible inputs you defined
+# 3. params is the resulting array containing all inputs provided
+# 4. usage is your usage string and will be enriched + printed on help
+# 5. $@ is the non-checked input for the script
+cook::run run inputs params "${inputs_str:-}" "${usage:-}" "$@"
 
-        run
-    fi
-
-)
-
-self "$@"
