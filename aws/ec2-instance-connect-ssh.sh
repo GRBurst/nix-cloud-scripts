@@ -67,6 +67,31 @@ Usage and Examples
 USAGE
 )
 
+generate_one_time_key() {
+    local tmpdir="$1"
+    local -n priv_key_ref="$2"
+    local -n pub_key_ref="$3"
+    if [[ "${inputs[g,value]:-}" == "true" ]]; then
+        priv_key_ref="$(find ~/.ssh -type f -not -iname "*.pub" | fzf -q "'${inputs[i,value]:-}" -1)"
+        if [[ -z "${priv_key_ref}" ]] && [[ -n "${inputs[i,value]}" ]]; then
+            priv_key_ref="${inputs[i,value]}"
+        fi
+
+        if [[ -n "${inputs[k,value]:-}" ]]; then
+            pub_key_ref="${inputs[k,value]}"
+        elif [[ -z "${inputs[k,value]:-}" ]] && [[ -f "${priv_key_ref}.pub" ]]; then
+            pub_key_ref="${priv_key_ref}.pub"
+        else
+            pub_key_ref="$(find ~/.ssh -type f -iname "*.pub" | fzf)"
+        fi
+    else
+        echo "Generating one-time ssh key"
+        priv_key_ref="$tmpdir/aws_instance_connect"
+        pub_key_ref="${priv_key_ref}.pub"
+        ssh-keygen -q -C "$(whoami) tmp instance connect key" -f "$priv_key_ref" -N "" -t ed25519 
+    fi
+}
+
 # Put your script logic here
 run() (
     local avail_zone instance_id profile priv_key pub_key ssh_args tmpdir
@@ -98,31 +123,13 @@ run() (
         fi
     )
 
-    if [[ "${inputs[g,value]:-}" == "true" ]]; then
-        priv_key="$(find ~/.ssh -type f -not -iname "*.pub" | fzf -q "'${inputs[i,value]:-}" -1)"
-        if [[ -z "${priv_key}" ]] && [[ -n "${inputs[i,value]}" ]]; then
-            priv_key="${inputs[i,value]}"
-        fi
-
-        if [[ -n "${inputs[k,value]:-}" ]]; then
-            pub_key="${inputs[k,value]}"
-        elif [[ -z "${inputs[k,value]:-}" ]] && [[ -f "${priv_key}.pub" ]]; then
-            pub_key="${priv_key}.pub"
-        else
-            pub_key="$(find ~/.ssh -type f -iname "*.pub" | fzf)"
-        fi
-    else
-        echo "Generating one-time ssh key"
-        priv_key="$tmpdir/aws_instance_connect"
-        pub_key="${priv_key}.pub"
-        ssh-keygen -q -C "$(whoami) tmp instance connect key" -f "$priv_key" -N "" -t ed25519 
-    fi
 
     instance_id="$(aws $profile ec2 describe-instances --filter Name=instance-state-name,Values=running | jq -r '.Reservations[].Instances[] | [ .InstanceId, (.Tags[] | select(.Key == "Name") | .Value) ] | @tsv' | fzf -q "'${inputs[n,value]:-}" -1 | cut -f1)"
 
     avail_zone="$(aws $profile ec2 describe-instances --instance-ids "$instance_id" --query 'Reservations[0].Instances[0].Placement.AvailabilityZone' --output text)"
 
     if [ -n "$instance_id" ]; then
+        generate_one_time_key "$tmpdir" priv_key pub_key
         local prox_cmd="$(cat <<CMD
 sh -c "aws $profile ec2-instance-connect send-ssh-public-key --instance-id %h --instance-os-user %r --ssh-public-key 'file://${pub_key}' --availability-zone '$avail_zone' && aws $profile ssm start-session --target %h --document-name AWS-StartSSHSession --parameters 'portNumber=%p'"
 CMD
