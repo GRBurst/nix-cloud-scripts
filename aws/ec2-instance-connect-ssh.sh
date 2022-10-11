@@ -4,8 +4,8 @@
 #! nix-shell -p script-cook awscli2 aws-vault
 #! nix-shell -p ssm-session-manager-plugin openssh
 #! nix-shell -p fzf jq mktemp
-##! nix-shell --pure
 ##! nix-shell --keep AWS_PROFILE --keep DEBUG
+##! nix-shell --pure
 # add '#' for the 2 shebangs above after finishing development of the script.
 
 set -Eeuo pipefail

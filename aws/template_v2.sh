@@ -1,7 +1,8 @@
 #! /usr/bin/env nix-shell
 #! nix-shell -i bash
-#! nix-shell -p hello
-#! nix-shell --keep ENV1 --keep ENV2 --keep DEBUG
+#! nix-shell -I nixpkgs=https://github.com/GRBurst/nixpkgs/archive/d40c3d5836d74e0f6249b572a1da2f1b05a6b549/script-cook.tar.gz
+#! nix-shell -p script-cook awscli2 aws-vault
+#! nix-shell --keep AWS_PROFILE --keep DEBUG
 #! nix-shell --pure
 # add '#' for the line / shebangs above after finishing development of the script.
 
