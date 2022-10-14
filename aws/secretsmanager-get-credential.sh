@@ -30,7 +30,8 @@ declare -a params  # Holds all input parameter
 
 # Configure your parameters here
 inputs=(
-    [p,param]="--profile" [p,value]="${AWS_PROFILE:-}" [p,short]="-p" [p,required]=true  [p,desc]="aws profile"
+    [p,param]="--profile"      [p,value]="${AWS_PROFILE:-}"  [p,short]="-p" [p,required]=true  [p,desc]="aws profile"
+    [c,param]="--no-clipboard" [c,tpe]="flag"                [c,short]="-c" [c,required]=false [c,desc]="copy secret to clipboard"
 )
 
 # Define your usage and help message here
@@ -50,11 +51,16 @@ USAGE
 
 # Put your script logic here
 run() (
-
-    local secret_name
-    secret_name="$(aws secretsmanager list-secrets "${params[@]}" | jq -r '.SecretList | .[].Name' | fzf)"
-    aws secretsmanager "${params[@]}" get-secret-value --version-stage AWSCURRENT --secret-id "$secret_name" | jq -r '.SecretString | fromjson | .password' | xclip -selection clipboard
-    echo "Copied credential to clipboard"
+    local secret_name secret_value profile
+    profile="$(cook::get_str p)"
+    secret_name="$(aws secretsmanager list-secrets $profile | jq -r '.SecretList | .[].Name' | fzf)"
+    secret_value="$(aws secretsmanager $profile get-secret-value --version-stage AWSCURRENT --secret-id "$secret_name" | jq -r '.SecretString | fromjson | .password')"
+    if [[ "${inputs[c,value]:-}" != "true" ]]; then
+        echo "$secret_value" | xclip -selection clipboard
+        echo "Copied credential to clipboard"
+    else
+        echo "$secret_value"
+    fi
 )
 
 
