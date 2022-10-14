@@ -4,7 +4,7 @@
 #! nix-shell -p script-cook awscli2 aws-vault
 #! nix-shell --keep AWS_PROFILE --keep DEBUG
 #! nix-shell --pure
-# add '#' for the line / shebangs above after finishing development of the script.
+# add '#' for the 2 shebangs above after finishing development of the script.
 
 set -Eeuo pipefail
 declare -r VERSION="1.0.0"
@@ -82,4 +82,3 @@ readonly usage inputs_str
 # 4. usage is your usage string and will be enriched + printed on help
 # 5. $@ is the non-checked input for the script
 cook::run run inputs params "${inputs_str:-}" "${usage:-}" "$@"
-

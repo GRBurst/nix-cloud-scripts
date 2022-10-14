@@ -4,7 +4,7 @@
 #! nix-shell -p script-cook awscli2 aws-vault
 #! nix-shell --keep AWS_PROFILE --keep DEBUG
 #! nix-shell --pure
-# add '#' for the line / shebangs above after finishing development of the script.
+# add '#' for the 2 shebangs above after finishing development of the script.
 
 set -Eeuo pipefail
 declare -r VERSION="1.0.0"
@@ -22,6 +22,7 @@ declare inputs_str # Alternatively define them in a string matrix
 declare usage      # Define your usage + examples below
 declare -a params  # Holds all input parameter
 
+
 ############################################
 ########## BEGIN OF CUSTOMISATION ##########
 ############################################
@@ -33,10 +34,10 @@ inputs_str=$(cat <<INPUTSTR
 # delimiter is the first character in your table to split the variables.
 # here, it is '|', because it is the first character in the column name row,
 # which is starting with ' | id | tpe | ... '
-# -  | named  | -         | -     | -            | false    | 1     | <-- default values |
-| id | tpe    | param     | short | value        | required | arity | desc               |
-# -------------------------------------------------------------------------------------- #
-| p  |        | --profile | -p    | AWS_PROFILE  | true     |       | aws profile        |
+# -  | named | -         | -     | -                | false    | 1     | <-- default values |
+| id | tpe   | param     | short | value            | required | arity | desc               |
+# ----------------------------------------------------------------------------------- #
+| p |        | --profile | -p    | ${AWS_PROFILE:-} | true     |       | aws profile        |
 INPUTSTR
 )
 
