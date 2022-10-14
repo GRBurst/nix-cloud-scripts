@@ -36,7 +36,7 @@ inputs=(
     [n,param]="--instance"       [n,short]="-n" [n,required]=false                              [n,desc]="instance id or instance name"
     [k,param]="--ssh-public-key" [k,short]="-k" [k,required]=false                              [k,desc]="instance connect public key"
     [s,param]="--ssh-args"       [s,short]="-s" [s,required]=false                              [s,desc]="ssh arguments"
-    [g,param]="--no-key-gen"     [g,short]="-g" [g,required]=false [g,tpe]="bool"               [g,desc]="don't generate one-time key"
+    [g,param]="--no-key-gen"     [g,short]="-g" [g,required]=false [g,tpe]="flag"               [g,desc]="don't generate one-time key"
 )
 
 # Define your usage and help message here
