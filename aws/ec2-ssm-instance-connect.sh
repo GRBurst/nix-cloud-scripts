@@ -35,6 +35,7 @@ inputs=(
     [i,param]="--identity-file"  [i,short]="-i" [i,required]=false                              [i,desc]="instance connect private key"
     [n,param]="--instance"       [n,short]="-n" [n,required]=false                              [n,desc]="instance id or instance name"
     [k,param]="--ssh-public-key" [k,short]="-k" [k,required]=false                              [k,desc]="instance connect public key"
+    [l,param]="--run-local"      [l,short]="-l" [l,required]=false                              [l,desc]="1-shot command that should run locally and then exits"
     [s,param]="--ssh-args"       [s,short]="-s" [s,required]=false                              [s,desc]="ssh arguments"
     [g,param]="--no-key-gen"     [g,short]="-g" [g,required]=false [g,tpe]="flag"               [g,desc]="don't generate one-time key"
 )
@@ -58,6 +59,9 @@ Usage and Examples
 
 - Interactively choose an ec2 instance to connect, provide an aws profile and a ssh key and forward port 8000 to localhost 58000:
     $(cook::name) --profile <aws_profile> --identity-file ~/.ssh/<identity_file> --ssh-args "-L 58000:localhost:8000"
+
+- Interactively choose an ec2 instance to connect, provide an aws profile and a ssh key and forward port 8000 to localhost 58000. While the tunnel is open, fire a 1-shot command (at your own risk) and close connection afterwards:
+    $(cook::name) --profile <aws_profile> --identity-file ~/.ssh/<identity_file> --ssh-args "-L 58000:localhost:8000" --run-local "psql -c \"select * from user\""
 
 - Connect directly to an ec2 instance and provide an aws profile, a ssh key and the instance name:
     $(cook::name) --profile <aws_profile> --identity-file ~/.ssh/<identity_file> -n <instance_name>
@@ -128,14 +132,20 @@ run() (
 
     avail_zone="$(aws $profile ec2 describe-instances --instance-ids "$instance_id" --query 'Reservations[0].Instances[0].Placement.AvailabilityZone' --output text)"
 
-    if [ -n "$instance_id" ]; then
+    if [[ -n "$instance_id" ]]; then
         generate_one_time_key "$tmpdir" priv_key pub_key
         local prox_cmd="$(cat <<CMD
 sh -c "aws $profile ec2-instance-connect send-ssh-public-key --instance-id %h --instance-os-user %r --ssh-public-key 'file://${pub_key}' --availability-zone '$avail_zone' && aws $profile ssm start-session --target %h --document-name AWS-StartSSHSession --parameters 'portNumber=%p'"
 CMD
         )"
 
-        ssh -l ec2-user -i "${priv_key}" -o ProxyCommand="$prox_cmd" $instance_id $ssh_args
+        if [[ -n "${inputs[l,value]:-}" ]]; then
+            ssh -fNT -MS control-socket -l ec2-user -i "${priv_key}" -o ProxyCommand="$prox_cmd" $instance_id $ssh_args
+            eval "${inputs[l,value]}"
+            ssh -S control-socket -O exit $instance_id
+        else
+            ssh -l ec2-user -i "${priv_key}" -o ProxyCommand="$prox_cmd" $instance_id $ssh_args
+        fi
     fi
 )
 
