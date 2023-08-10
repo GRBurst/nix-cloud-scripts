@@ -52,7 +52,7 @@ run() (
     local profile="$(cook::get_str p)"
     local group="$(awslogs groups $profile | fzf)"
     if [[ -n "$group" ]]; then
-        awslogs get --watch "$group" --no-group --no-stream "${params[@]}"
+        awslogs get --watch "$group" --no-group --no-stream $(cook::get s) "${params[@]}"
     fi
 )
 
