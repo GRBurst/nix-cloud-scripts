@@ -1,2 +1,2 @@
-nixpkgs: 3ef47c337ccf41d5e10c2ffa16f10b3f2768ae41
+nixpkgs: 63efdba0508a4625915cfe0683b45381549cafd5
 script-cook: v3.1.1
